@@ -152,15 +152,17 @@ public class PaletteOptimization {
         Image output;
         int width = original.getWidth(null);
         int height = original.getHeight(null);
-        int[] original_pixels = new int[width * height];// масс
-        int[] optimized_pixels = new int[width * height];
-        int[] output_pixels = new int[width * height];
-        int[] pixels_correction = new int[width * height];
+        int[] original_pixels = new int[width * height];// массив исходных пикселов
+        int[] optimized_pixels = new int[width * height];// пикселы после оптимизации определенным методом
+        int[] output_pixels = new int[width * height];// выходные пикселы после тонирования
+        int[] pixels_correction = new int[width * height];// массив величин, на которые изменяются пикселы
 
+        // два граббера для картинок
         PixelGrabber grabber_original = new PixelGrabber(original, 0, 0, width, height, original_pixels, 0, width);
         PixelGrabber grabber_optimized = new PixelGrabber(optimized, 0, 0, width, height, optimized_pixels, 0, width);
 
         try {
+            // граббим
             grabber_original.grabPixels();
             grabber_optimized.grabPixels();
         } catch (InterruptedException e) {
@@ -168,21 +170,26 @@ public class PaletteOptimization {
         }
 
         for (int i = 0; i < original_pixels.length; i++) {
+            // не помню почему, но просто вычитание тут применить нельзя. Возможно, из-за знака
             pixels_correction[i] = original_pixels[i] ^ optimized_pixels[i];
-            pixels_correction[i] = (((pixels_correction[i] << 8) >>> 26) << 16) | (((pixels_correction[i] << 16) >>> 26) << 8) | ((pixels_correction[i] << 24) >>> 26);
+            // этот извратный ход тоже вспомнить не могу, но похоже, что я просто избавлялся от альфа-канала
+            pixels_correction[i] = (((pixels_correction[i] << 8) >>> 24) << 16) | (((pixels_correction[i] << 16) >>> 24) << 8) | ((pixels_correction[i] << 24) >>> 24);
         }
         output_pixels = optimized_pixels.clone();
+        // проходим по всем строкам
         for (int i = 0; i < height - 1; i++) {
+            // если строка четная, то идем слева направо
             if (i % 2 == 0) {
                 for (int j = 1; j < width - 1; j++) {
                     int index = (i * width) + j;
-
+                    // см. формулу восстановления цвета по алгоритму - корректируются соседние пикселы
                     output_pixels[index + 1] = correctColor(output_pixels[index + 1], pixels_correction[index]);
                     output_pixels[index + width + 1] = correctColor(output_pixels[index + width + 1], pixels_correction[index]);
                     output_pixels[index + width] = correctColor(output_pixels[index + width], pixels_correction[index]);
                     output_pixels[index + width - 1] = correctColor(output_pixels[index + width - 1], pixels_correction[index]);
                 }
             } else {
+                // если ряд нечетный, то идем справа налево
                 for (int j = width - 1; j >= 1; j--) {
                     int index = (i * width) + j;
                     output_pixels[index - 1] = correctColor(output_pixels[index - 1], pixels_correction[index]);
@@ -192,11 +199,13 @@ public class PaletteOptimization {
                 }
             }
         }
+        // формируем выходную картинку
         MemoryImageSource ms = new MemoryImageSource(width, height, output_pixels, 0, width);
         output = Toolkit.getDefaultToolkit().createImage(ms);
         return output;
     }
 
+    // функции получают значение одного канала из пиксела
     private static int getR(int c) {
         return (c << 8) >>> 24;
     }
@@ -209,10 +218,12 @@ public class PaletteOptimization {
         return (c << 24) >>> 24;
     }
 
+    // функция восстанавливает пиксел из значений отдельных каналов
     private static int fromRGB(int r, int g, int b) {
         return (255 << 24) | (r << 16) | (g << 8) | b;
     }
 
+    // функция корректирует цвет source на величину correction в разрезе каждого канала
     private static int correctColor(int source, int correction) {
         int r_correction = getR(correction);
         int g_correction = getG(correction);
