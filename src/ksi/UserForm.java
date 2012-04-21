@@ -83,8 +83,10 @@ public class UserForm {
                 } else {
                     // считываем картинку в память
                     Image im_source = Toolkit.getDefaultToolkit().getImage(f.getAbsolutePath());
+                    // оптимизируем фиксированной палитрой
                     Image optimized = PaletteOptimization.SetFixedPalette(im_source);
                     lbl_optimized.setIcon(new ImageIcon(optimized));
+                    // делаем псевдотонирование
                     Image dithered = PaletteOptimization.MakeDithering(im_source, optimized);
                     lbl_toned.setIcon(new ImageIcon(dithered));
                 }
@@ -98,8 +100,10 @@ public class UserForm {
                     JOptionPane.showMessageDialog(frame, "Выберите файл для преобразования!");
                 } else {
                     Image im_source = Toolkit.getDefaultToolkit().getImage(f.getAbsolutePath());
+                    // оптимизируем методом популярности
                     Image optimized = PaletteOptimization.SetOptimizedPalette(im_source);
                     lbl_optimized.setIcon(new ImageIcon(optimized));
+                    // псевдотонирование
                     Image dithered = PaletteOptimization.MakeDithering(im_source, optimized);
                     lbl_toned.setIcon(new ImageIcon(dithered));
                 }
